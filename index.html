@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天琴座雙雙星 (ε Lyrae) 望遠鏡孔徑模擬器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', 'Noto Sans TC', sans-serif;
+            background-color: #03050a;
+            color: #f1f5f9;
+        }
+        /* 自訂滑桿樣式 */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 22px;
+            width: 22px;
+            border-radius: 50%;
+            background: #38bdf8;
+            cursor: pointer;
+            margin-top: -8px;
+            box-shadow: 0 0 12px rgba(56, 189, 248, 0.9);
+            transition: transform 0.1s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #1e293b;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+
+    <div class="w-full max-w-4xl flex flex-col gap-4">
+        
+        <!-- 標題與當前物理數據 -->
+        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-2 px-1">
+            <div>
+                <h1 class="text-xl sm:text-2xl font-bold text-white tracking-wide">天琴座「雙雙星」 (ε¹ 與 ε²) 孔徑模擬</h1>
+            </div>
+            <div class="flex items-center gap-4 bg-slate-900/90 border border-slate-800 px-3.5 py-2 rounded-xl text-xs sm:text-sm">
+                <div>
+                    <span class="text-slate-400">鑑別率：</span>
+                    <span id="resValue" class="font-mono font-bold text-emerald-400">19.71"</span>
+                </div>
+                <div class="h-4 w-px bg-slate-700"></div>
+                <div>
+                    <span class="text-slate-400">觀測狀態：</span>
+                    <span id="deviceRef" class="font-semibold text-sky-400">肉眼極限：勉強見兩點或融成一團</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 影像顯示畫布區 -->
+        <div class="relative w-full aspect-[16/10] bg-black rounded-2xl overflow-hidden border border-slate-800 shadow-2xl">
+            <canvas id="photoCanvas" class="w-full h-full block"></canvas>
+            
+            <!-- 畫面角落角距標尺與方位提示 -->
+            <div class="absolute top-3 left-3 bg-slate-950/75 backdrop-blur-sm border border-slate-800/80 px-3 py-1.5 rounded-lg text-[11px] text-slate-300 pointer-events-none">
+                <div>ε¹ 與 ε² 主星組距：<span class="text-sky-400 font-mono">208"</span> (約 3.5 角分)</div>
+                <div>ε¹ 子星距：<span class="text-amber-300 font-mono">2.3"</span> ｜ ε² 子星距：<span class="text-amber-300 font-mono">2.4"</span></div>
+            </div>
+        </div>
+
+        <!-- 唯一控制面板：望遠鏡孔徑調整 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 shadow-lg">
+            <div class="flex justify-between items-center">
+                <label for="apertureSlider" class="text-sm sm:text-base font-semibold text-slate-200">
+                    望遠鏡孔徑 (Aperture)
+                </label>
+                <span id="apertureDisplay" class="text-xl sm:text-2xl font-mono font-bold text-sky-400">
+                    7 mm
+                </span>
+            </div>
+
+            <!-- 孔徑滑桿 (7mm 肉眼 ~ 300mm 望遠鏡，聚焦在雙雙星分離的關鍵區間) -->
+            <input type="range" id="apertureSlider" min="7" max="300" value="7" step="1" class="w-full">
+
+            <!-- 快速孔徑刻度標籤 -->
+            <div class="grid grid-cols-5 gap-2 text-center text-[11px] sm:text-xs">
+                <button type="button" data-val="7" class="preset-btn py-1.5 px-2 rounded-lg bg-sky-950/60 hover:bg-slate-700 text-sky-300 border border-sky-500/50 transition">
+                    7 mm<br><span class="text-[10px] text-slate-400">人類肉眼</span>
+                </button>
+                <button type="button" data-val="30" class="preset-btn py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">
+                    30 mm<br><span class="text-[10px] text-slate-400">小型雙筒</span>
+                </button>
+                <button type="button" data-val="58" class="preset-btn py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">
+                    58 mm<br><span class="text-[10px] text-slate-400">瑞利極限臨界</span>
+                </button>
+                <button type="button" data-val="80" class="preset-btn py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">
+                    80 mm<br><span class="text-[10px] text-slate-400">小型折射鏡</span>
+                </button>
+                <button type="button" data-val="200" class="preset-btn py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition">
+                    200 mm<br><span class="text-[10px] text-slate-400">8吋望遠鏡</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById('photoCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('apertureSlider');
+        const apertureDisplay = document.getElementById('apertureDisplay');
+        const resValue = document.getElementById('resValue');
+        const deviceRef = document.getElementById('deviceRef');
+        const presetBtns = document.querySelectorAll('.preset-btn');
+
+        let currentAperture = 7;
+
+        // 預先生成固定的背景微弱星點（無需外部圖片，保證零延遲與精準比例）
+        const bgStars = Array.from({ length: 140 }, (_, i) => {
+            // 使用偽隨機確保每次重繪位置固定
+            const seed1 = Math.sin(i * 12.9898) * 43758.5453;
+            const seed2 = Math.sin(i * 78.233) * 43758.5453;
+            const seed3 = Math.sin(i * 39.425) * 43758.5453;
+            return {
+                nx: seed1 - Math.floor(seed1),
+                ny: seed2 - Math.floor(seed2),
+                mag: (seed3 - Math.floor(seed3)),
+                tint: i % 3 === 0 ? '#dbeafe' : (i % 5 === 0 ? '#fef3c7' : '#ffffff')
+            };
+        });
+
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            renderDoubleDouble();
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+
+        /**
+         * 繪製單顆恆星的艾里斑 (Airy Disk) 與繞射光環
+         * @param {number} x - 畫面 X 座標
+         * @param {number} y - 畫面 Y 座標
+         * @param {number} airyRadiusPx - 依孔徑計算出的第一暗環半徑 (像素)
+         * @param {number} brightness - 恆星相對亮度 (0 ~ 1)
+         * @param {string} coreColor - 星點核心色調
+         */
+        function drawAiryStar(x, y, airyRadiusPx, brightness, coreColor) {
+            ctx.save();
+            ctx.globalCompositeOperation = 'lighter';
+
+            // 1. 外圍大氣散射與光暈
+            const haloRadius = Math.max(12, airyRadiusPx * 4.5);
+            const haloGrad = ctx.createRadialGradient(x, y, 0, x, y, haloRadius);
+            haloGrad.addColorStop(0, `rgba(186, 230, 253, ${0.38 * brightness})`);
+            haloGrad.addColorStop(0.35, `rgba(125, 211, 252, ${0.14 * brightness})`);
+            haloGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = haloGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, haloRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            // 2. 第一繞射亮環 (Airy Ring) - 孔徑適中時可清晰看見同心圓繞射環
+            if (airyRadiusPx > 1.8 && airyRadiusPx < 35) {
+                const ringRadius = airyRadiusPx * 1.35;
+                ctx.strokeStyle = `rgba(186, 230, 253, ${0.22 * brightness})`;
+                ctx.lineWidth = Math.max(0.8, airyRadiusPx * 0.18);
+                ctx.beginPath();
+                ctx.arc(x, y, ringRadius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+
+            // 3. 中央艾里斑核心 (Airy Disk Core)
+            const coreRadius = Math.max(1.4, airyRadiusPx * 0.85);
+            const coreGrad = ctx.createRadialGradient(x, y, 0, x, y, coreRadius);
+            coreGrad.addColorStop(0, `rgba(255, 255, 255, ${Math.min(1, 0.98 * brightness)})`);
+            coreGrad.addColorStop(0.55, coreColor);
+            coreGrad.addColorStop(1, 'rgba(147, 197, 253, 0)');
+
+            ctx.fillStyle = coreGrad;
+            ctx.beginPath();
+            ctx.arc(x, y, coreRadius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        /**
+         * 根據望遠鏡孔徑大小模擬天琴座「雙雙星」 (ε1 與 ε2 Lyrae)
+         * 採用雙視場融合設計：主畫面呈現 ε1 與 ε2 的相對位置，並以高倍率望遠鏡視角精確呈現 2.3" 與 2.4" 的分離細節
+         */
+        function renderDoubleDouble() {
+            const width = canvas.parentElement.clientWidth;
+            const height = canvas.parentElement.clientHeight;
+            const D = currentAperture;
+
+            // 計算理論角解析度 (瑞利準則 theta = 138 / D 角秒)
+            const arcsec = 138 / D;
+            resValue.textContent = `${arcsec.toFixed(2)}"`;
+            apertureDisplay.textContent = `${D} mm`;
+
+            // 更新雙雙星分離狀態說明
+            if (D < 15) {
+                deviceRef.textContent = "肉眼極限：勉強見兩點或融成一團";
+            } else if (D < 45) {
+                deviceRef.textContent = "分出 ε¹ 與 ε²（共2顆，子星未分）";
+            } else if (D < 62) {
+                deviceRef.textContent = "瑞利極限臨界：星點呈花生狀拉長";
+            } else if (D < 100) {
+                deviceRef.textContent = "成功分離！清晰看見 4 顆獨立星點";
+            } else {
+                deviceRef.textContent = "高解析分離：雙雙星與繞射環銳利分明";
+            }
+
+            // 清空夜空背景
+            ctx.fillStyle = '#03060c';
+            ctx.fillRect(0, 0, width, height);
+
+            // 繪製背景暗星（小孔徑集光力低時較暗，大孔徑時更清晰）
+            const lightGather = Math.min(1, Math.log10(D) / Math.log10(200));
+            bgStars.forEach(star => {
+                const sx = star.nx * width;
+                const sy = star.ny * height;
+                const alpha = (0.15 + star.mag * 0.55) * (0.35 + 0.65 * lightGather);
+                const radius = (0.6 + star.mag * 1.1) * (1 + (138 / D) * 0.06);
+                ctx.fillStyle = star.tint;
+                ctx.globalAlpha = alpha;
+                ctx.beginPath();
+                ctx.arc(sx, sy, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // 設定比例尺：為了讓使用者在單一畫面同時看清 ε1/ε2 與各自子星的分離過程
+            // 定義 1 角秒在畫布上對應的像素基準 (隨視窗寬度自適應)
+            const pxPerArcsec = Math.min(width, height) * 0.022;
+
+            // ε1 與 ε2 兩組主星的中心座標（左上方為 ε1，右下方為 ε2）
+            const centerX = width * 0.5;
+            const centerY = height * 0.5;
+            const groupOffsetX = width * 0.21;
+            const groupOffsetY = height * 0.16;
+
+            const eps1X = centerX - groupOffsetX;
+            const eps1Y = centerY - groupOffsetY;
+            const eps2X = centerX + groupOffsetX;
+            const eps2Y = centerY + groupOffsetY;
+
+            // 計算當前孔徑下的艾里斑半徑（像素）：
+            // 當 D = 58mm 時，theta = 2.38"，艾里斑半徑剛好等於 2.35" 的子星間距（瑞利準則定義）
+            const airyRadiusPx = arcsec * pxPerArcsec;
+
+            // 1. 繪製 ε1 雙星組（A星 5.0等、B星 6.1等，角距 2.3"，方位角近南北向）
+            const sep1 = 2.3 * pxPerArcsec;
+            const angle1 = -Math.PI * 0.42; // 近似南北微傾
+            const dx1 = Math.cos(angle1) * (sep1 * 0.5);
+            const dy1 = Math.sin(angle1) * (sep1 * 0.5);
+
+            drawAiryStar(eps1X - dx1, eps1Y - dy1, airyRadiusPx, 1.0, 'rgba(219, 234, 254, 0.9)');  // ε1 A (較亮)
+            drawAiryStar(eps1X + dx1, eps1Y + dy1, airyRadiusPx * 0.92, 0.78, 'rgba(254, 243, 199, 0.85)'); // ε1 B (稍暗偏暖白)
+
+            // 2. 繪製 ε2 雙星組（A星 5.2等、B星 5.5等，角距 2.4"，方位角近東西向，與 ε1 幾乎垂直！）
+            const sep2 = 2.4 * pxPerArcsec;
+            const angle2 = Math.PI * 0.12; // 近似東西向（與 ε1 呈近 90 度垂直排列是雙雙星最大特色）
+            const dx2 = Math.cos(angle2) * (sep2 * 0.5);
+            const dy2 = Math.sin(angle2) * (sep2 * 0.5);
+
+            drawAiryStar(eps2X - dx2, eps2Y - dy2, airyRadiusPx, 0.95, 'rgba(224, 242, 254, 0.9)'); // ε2 A
+            drawAiryStar(eps2X + dx2, eps2Y + dy2, airyRadiusPx * 0.96, 0.88, 'rgba(224, 242, 254, 0.88)'); // ε2 B
+
+            // 3. 繪製細微標示文字（僅顯示名稱，不遮擋星點）
+            ctx.fillStyle = 'rgba(148, 163, 184, 0.75)';
+            ctx.font = '600 13px "Inter", "Noto Sans TC", sans-serif';
+            ctx.fillText('ε¹ Lyrae (2.3")', eps1X - 42, eps1Y - Math.max(36, airyRadiusPx * 1.4));
+            ctx.fillText('ε² Lyrae (2.4")', eps2X - 42, eps2Y + Math.max(46, airyRadiusPx * 1.4 + 12));
+        }
+
+        // 更新按鈕高亮狀態
+        function updatePresetHighlight(val) {
+            presetBtns.forEach(btn => {
+                if (parseInt(btn.dataset.val, 10) === val) {
+                    btn.className = "preset-btn py-1.5 px-2 rounded-lg bg-sky-950/60 hover:bg-slate-700 text-sky-300 border border-sky-500/50 transition";
+                } else {
+                    btn.className = "preset-btn py-1.5 px-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/60 transition";
+                }
+            });
+        }
+
+        // 監聽滑桿變動
+        slider.addEventListener('input', (e) => {
+            currentAperture = parseInt(e.target.value, 10);
+            updatePresetHighlight(currentAperture);
+            renderDoubleDouble();
+        });
+
+        // 監聽快速刻度點擊
+        presetBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                currentAperture = parseInt(btn.dataset.val, 10);
+                slider.value = currentAperture;
+                updatePresetHighlight(currentAperture);
+                renderDoubleDouble();
+            });
+        });
+
+        // 初始化畫布
+        window.addEventListener('load', resizeCanvas);
+        resizeCanvas();
+    </script>
+</body>
+</html>
